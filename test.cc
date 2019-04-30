@@ -10,7 +10,7 @@
 #define TEST_SPSC
 #define TEST_SPMC
 #define TEST_MPSC
-const int kNumOperations = 10000000;
+const int kNumOperations = 9999984;
 const int kMaxQueueSize = 1000;
 
 struct Data {
