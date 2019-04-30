@@ -22,7 +22,7 @@ template<typename T>
 class MutexFixedSizeQueue : public FixedSizeQueueInterface<T> {
  public:
 
-//   // Simple helper class to ensure a lock is unlocked once the scope is exited
+  // Simple helper class to ensure a lock is unlocked once the scope is exited
   class ScopedLock {
    public:
     ScopedLock(std::mutex* mutex) : mutex_(mutex) {
@@ -38,15 +38,14 @@ class MutexFixedSizeQueue : public FixedSizeQueueInterface<T> {
   MutexFixedSizeQueue(int max_size) : max_size_(max_size), buffer_(new Entry[max_size])
   { }
 
-//   // Reads the next data item into 'data', returns true
-//   // if successful or false if the queue was empty.
- bool Read(T* data) {
-    ScopedLock l(&tail_mutex);
+  // Reads the next data item into 'data', returns true
+  // if successful or false if the queue was empty.
+  bool Read(T* data) {
+    ScopedLock l(&mutex_);
     uint32_t location = tail_ % max_size_;
     if (!buffer_[location].valid || tail_ == head_) {
       return false; // empty
     }
-    ScopedLock l2(&buffer_[location].mutex_);
     assert(head_ >= tail_);
     assert(buffer_[location].valid == true);
     *data = buffer_[location].data;
@@ -58,12 +57,11 @@ class MutexFixedSizeQueue : public FixedSizeQueueInterface<T> {
   // Writes 'data' into the queue.  Returns true if successful
   // or false if the queue was full.
   bool Write(const T& data) {
-    ScopedLock l(&head_mutex);
+    ScopedLock l(&mutex_);
     uint32_t location = head_ % max_size_;
     if (buffer_[location].valid || head_ == tail_ + max_size_) {
       return false; // full
     }
-    ScopedLock l2(&buffer_[location].mutex_);
     assert(head_ >= tail_);
     assert(buffer_[location].valid == false);
     buffer_[location].data = data;
@@ -79,7 +77,6 @@ class MutexFixedSizeQueue : public FixedSizeQueueInterface<T> {
  private:struct Entry {
     T data;
     bool valid = false;
-    std::mutex mutex_;
   };
 
   int max_size_;
@@ -88,10 +85,9 @@ class MutexFixedSizeQueue : public FixedSizeQueueInterface<T> {
   uint32_t head_ __attribute__((aligned(64))) = 0;
   uint32_t tail_ __attribute__((aligned(64))) = 0;
 
-  std::mutex head_mutex;
-  std::mutex tail_mutex;
-  //[kMaxQueueSize];
+  std::mutex mutex_;
 };
+
 
 // Implements a fixed-size queue using no lock, but limited to a single
 // producer thread and a single consumer thread.
